@@ -50,14 +50,7 @@ void TriTree::Transpose() {
 }
 
 void TriTree::Prune(double tol) {
-	// Pseudocode:
-	// 1) For each node, test prune condition against ORIGINAL subtree leaves:
-	//    all descendant leaves must be within tol of node->avg.
-	// 2) If condition is true, delete children A/B/C (make node a leaf).
-	// 3) Otherwise recurse into existing children.
-	// 4) Use helper(s):
-	//    - one to check "all leaves within tolerance"
-	//    - one to clear a subtree when pruning.
+	
 }
 
 int TriTree::NumLeaves() const {
