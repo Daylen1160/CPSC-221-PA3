@@ -50,7 +50,35 @@ void TriTree::Transpose() {
 }
 
 void TriTree::Prune(double tol) {
-	
+	Pruner(root, tol);
+}
+
+void TriTree::Pruner(Node*& node, double tol) {
+    if (node == nullptr) {
+        return;
+    }
+
+    if (WithinTol(node, node->avg, tol)) {
+        ClearNode(node->A);
+        ClearNode(node->B);
+        ClearNode(node->C);
+    } else {
+        Pruner(node->A, tol);
+        Pruner(node->B, tol);
+        Pruner(node->C, tol);
+    }
+}
+
+bool TriTree::WithinTol(Node* curr, RGBAPixel& base, double tol) const {
+    if (curr == nullptr) {
+        return true;
+    }
+
+    if (curr->A == nullptr && curr->B == nullptr && curr->C == nullptr) {
+        return curr->avg.dist(base) <= tol;
+    }
+
+    return WithinTol(curr->A, base, tol) && WithinTol(curr->B, base, tol) && WithinTol(curr->C, base, tol);
 }
 
 int TriTree::NumLeaves() const {
@@ -58,13 +86,17 @@ int TriTree::NumLeaves() const {
 }
 
 Node* TriTree::BuildNode(PNG& im, pair<int, int> ul, int w, int h) {
+    if (w <= 0 || h <= 0) {
+        return nullptr;
+    }
+
+    Node* node = new Node(ul, w, h);
+
 	if (w == 1 && h == 1) {
-		Node *leaf = new Node(ul, w, h);
-		leaf->avg = *im.getPixel(ul.first, ul.second);
-		return leaf;
+		node->avg = *im.getPixel(ul.first, ul.second);
+		return node;
 	}
 
-	Node *node = new Node(ul, w, h);
 	int wA, hA;
 	int wB, hB;
 	int wC, hC;
@@ -84,31 +116,36 @@ Node* TriTree::BuildNode(PNG& im, pair<int, int> ul, int w, int h) {
 			node->B = nullptr;
 			node->C = BuildNode(im, ulC, wC, hC);
 		}
+        else {
+            if (w % 3 == 0) {
+                wA = w / 3;
+                wB = w / 3;
+                wC = w / 3;
+            }
 
-		else if (w % 3 == 0) {
-			wA = w / 3;
-			wB = w / 3;
-			wC = w / 3;
-		}
+            else if (w % 3 == 1) {
+                wA = w / 3;
+                wB = w / 3 + 1;
+                wC = w / 3;
+            }
 
-		else if (w % 3 == 1) {
-			wA = w / 3;
-			wB = w / 3 + 1;
-			wC = w / 3;
-		}
+            else {
+                wA = w / 3 + 1;
+                wB = w / 3;
+                wC = w / 3 + 1;
+            }
 
-		else {
-			wA = w / 3 + 1;
-			wB = w / 3;
-			wC = w / 3 + 1;
-		}
+            hA = h;
+            hB = h;
+            hC = h;
+            ulA = {ul.first, ul.second};
+            ulB = {ul.first + wA, ul.second};
+            ulC = {ul.first + wA + wB, ul.second};
 
-		hA = h;
-		hB = h;
-		hC = h;
-		ulA = {ul.first, ul.second};
-		ulB = {ul.first + wA, ul.second};
-		ulC = {ul.first + wA + wB, ul.second};
+            node->A = BuildNode(im, ulA, wA, hA);
+            node->B = BuildNode(im, ulB, wB, hB);
+            node->C = BuildNode(im, ulC, wC, hC);
+        }
 	}
 
 	else {
@@ -123,36 +160,37 @@ Node* TriTree::BuildNode(PNG& im, pair<int, int> ul, int w, int h) {
 			node->B = nullptr;
 			node->C = BuildNode(im, ulC, wC, hC);
 		}
+        else {
+            if (h % 3 == 0) {
+                hA = h / 3;
+                hB = h / 3;
+                hC = h / 3;
+            }
 
-		else if (h % 3 == 0) {
-			hA = h / 3;
-			hB = h / 3;
-			hC = h / 3;
-		}
+            else if (h % 3 == 1) {
+                hA = h / 3;
+                hB = h / 3 + 1;
+                hC = h / 3;
+            }
 
-		else if (h % 3 == 1) {
-			hA = h / 3;
-			hB = h / 3 + 1;
-			hC = h / 3;
-		}
+            else {
+                hA = h / 3 + 1;
+                hB = h / 3;
+                hC = h / 3 + 1;
+            }
 
-		else {
-			hA = h / 3 + 1;
-			hB = h / 3;
-			hC = h / 3 + 1;
-		}
+            wA = w;
+            wB = w;
+            wC = w;
+            ulA = {ul.first, ul.second};
+            ulB = {ul.first, ul.second + hA};
+            ulC = {ul.first, ul.second + hA + hB};
 
-		wA = w;
-		wB = w;
-		wC = w;
-		ulA = {ul.first, ul.second};
-		ulB = {ul.first, ul.second + hA};
-		ulC = {ul.first, ul.second + hA + hB};
+            node->A = BuildNode(im, ulA, wA, hA);
+            node->B = BuildNode(im, ulB, wB, hB);
+            node->C = BuildNode(im, ulC, wC, hC);
+        }
 	}
-	
-	node->A = BuildNode(im, ulA, wA, hA);
-	node->B = BuildNode(im, ulB, wB, hB);
-	node->C = BuildNode(im, ulC, wC, hC);
 	
 	uint64_t r = 0, g = 0, b = 0, a = 0;
 	for (int x = ul.first; x < ul.first + w; x++) {
@@ -181,12 +219,14 @@ int TriTree::CountLeaves(const Node *node) const {
 	return CountLeaves(node->A) + CountLeaves(node->B) + CountLeaves(node->C);
 }
 
-void TriTree::ClearNode(Node *node) {
+void TriTree::ClearNode(Node*& node) {
 	if (node == nullptr) return;
 	ClearNode(node->A);
 	ClearNode(node->B);
 	ClearNode(node->C);
+
 	delete node;
+    node = nullptr;
 }
 
 Node* TriTree::CopyNode(const Node* node) {

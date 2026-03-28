@@ -13,10 +13,14 @@
 
 int CountLeaves(const Node* node) const;
 
-void ClearNode(Node* node);
+void ClearNode(Node*& node);
 
 Node* CopyNode(const Node* node);
 
 void RenderNode(const Node* node, PNG& out) const;
 
 void TransposeNode(Node* node);
+
+bool WithinTol(Node* curr, RGBAPixel& base, double tol) const;
+
+void Pruner(Node*& node, double tol);
