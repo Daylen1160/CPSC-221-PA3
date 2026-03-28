@@ -1,6 +1,6 @@
 /**
  * @file tritree.cpp
- * @author CPSC 221
+ * @author dchun924
  * @description TriTree class implementation, CPSC 221 PA3
  *
  * This file must be submitted for grading.
@@ -9,37 +9,59 @@
 
 #include "tritree.h"
 
+#include <cstdint>
+
 TriTree::TriTree(PNG& imIn) {
-	// REPLACE THE LINEs BELOW WITH YOUR CODE
-	width = 0;
-	height = 0;
-	root = nullptr;
+	if (imIn.width() == 0 || imIn.height() == 0) {
+		width = 0;
+		height = 0;
+		root = nullptr;
+		return;
+	}
+	width = imIn.width();
+	height = imIn.height();
+	root = BuildNode(imIn, {0, 0}, width, height);
 }
 
 void TriTree::Clear() {
-	// YOUR CODE HERE
+	ClearNode(root);
+	root = nullptr;
+	width = 0;
+	height = 0;
 }
 
 void TriTree::Copy(const TriTree& other) {
-	// YOUR CODE HERE
+	width = other.width;
+	height = other.height;
+	root = CopyNode(other.root);
 }
 
 PNG TriTree::Render() const {
-	// REPLACE THE LINE BELOW WITH YOUR CODE
-	return PNG();
+	PNG myPNG = PNG(width, height);
+	RenderNode(root, myPNG);
+	return myPNG;
 }
 
 void TriTree::Transpose() {
-	// YOUR CODE HERE
+	TransposeNode(root);
+	int temp = width;
+	width = height;
+	height = temp;
 }
 
 void TriTree::Prune(double tol) {
-	// YOUR CODE HERE
+	// Pseudocode:
+	// 1) For each node, test prune condition against ORIGINAL subtree leaves:
+	//    all descendant leaves must be within tol of node->avg.
+	// 2) If condition is true, delete children A/B/C (make node a leaf).
+	// 3) Otherwise recurse into existing children.
+	// 4) Use helper(s):
+	//    - one to check "all leaves within tolerance"
+	//    - one to clear a subtree when pruning.
 }
 
 int TriTree::NumLeaves() const {
-	// REPLACE THE LINE BELOW WITH YOUR CODE
-	return 0;
+	return CountLeaves(root);
 }
 
 Node* TriTree::BuildNode(PNG& im, pair<int, int> ul, int w, int h) {
@@ -159,3 +181,63 @@ Node* TriTree::BuildNode(PNG& im, pair<int, int> ul, int w, int h) {
 }
 
 /*==== ALSO IMPLEMENT ANY PRIVATE FUNCTIONS YOU HAVE DECLARED ====*/
+
+int TriTree::CountLeaves(const Node *node) const {
+	if (node == nullptr) return 0;
+	if (node->A == nullptr && node->B == nullptr && node->C == nullptr) return 1;
+	return CountLeaves(node->A) + CountLeaves(node->B) + CountLeaves(node->C);
+}
+
+void TriTree::ClearNode(Node *node) {
+	if (node == nullptr) return;
+	ClearNode(node->A);
+	ClearNode(node->B);
+	ClearNode(node->C);
+	delete node;
+}
+
+Node* TriTree::CopyNode(const Node* node) {
+	if (node == nullptr) return nullptr;
+
+	Node* copy = new Node(node->upperleft, node->width, node->height);
+	copy->avg = node->avg;
+	copy->A = CopyNode(node->A);
+	copy->B = CopyNode(node->B);
+	copy->C = CopyNode(node->C);
+	return copy;
+}
+
+void TriTree::RenderNode(const Node* node, PNG& out) const {
+	if (node == nullptr) return;
+
+	if (node->A == nullptr && node->B == nullptr && node->C == nullptr) {
+		int startX = node->upperleft.first;
+		int startY = node->upperleft.second;
+		for (int x = startX; x < startX + node->width; x++) {
+			for (int y = startY; y < startY + node->height; y++) {
+				*out.getPixel(x, y) = node->avg;
+			}
+		}
+		return;
+	}
+
+	RenderNode(node->A, out);
+	RenderNode(node->B, out);
+	RenderNode(node->C, out);
+}
+
+void TriTree::TransposeNode(Node* node) {
+	if (node == nullptr) return;
+
+	int tempCoord = node->upperleft.first;
+	node->upperleft.first = node->upperleft.second;
+	node->upperleft.second = tempCoord;
+
+	int tempDim = node->width;
+	node->width = node->height;
+	node->height = tempDim;
+
+	TransposeNode(node->A);
+	TransposeNode(node->B);
+	TransposeNode(node->C);
+}
